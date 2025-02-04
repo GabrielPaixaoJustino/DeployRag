@@ -6,9 +6,7 @@ from langchain_openai import OpenAIEmbeddings
 from langchain_openai import ChatOpenAI
 from langchain_community.vectorstores import Chroma
 from langchain_community.document_loaders import PyPDFLoader
-from langchain.chains.combine_documents import create_stuff_documents_chain
-from langchain.chains import create_retrieval_chain
-from langchain_core.prompts import ChatPromptTemplate, PromptTemplate
+from langchain_core.prompts import PromptTemplate
 from langchain_core.runnables import RunnableSequence
 
 
@@ -41,46 +39,47 @@ def loadData():
         length_function = len,
         add_start_index = True
     )
+    
     chunks = text_splitter.split_documents(pages)
-    db = Chroma.from_documents(chunks, embedding = embeddings_model, persist_directory="text_index")    
-    vectordb = Chroma(persist_directory="text_index", embedding_function=embeddings_model)
+    vectordb = Chroma.from_documents(chunks, embedding=embeddings_model)
+    
+    
     # Load Retriever
     retriever = vectordb.as_retriever(search_kwargs={"k": 3})
     return retriever
 
-def getRelevantsDocs(question): # função p recuperar documentos relevantes com base em uma (question) fornecida como entrada.
+def getRelevantDocs(question): # função p recuperar documentos relevantes com base em uma (question) fornecida como entrada.
     retriever = loadData()
     context = retriever.invoke(question)
     return context
 
-def ask(question, llm):  
+def ask(question, llm):
     TEMPLATE = """
-     Você é um especialista em regras de fundos de investimento FDIC e tecnologia. Responda a pergunta abaixo utlizando o contexto informado.
-     
-     Contexto: {context}
-     
-     Pergunta: {question}
-    """ 
+    Você é um especialista em FDICs e fundos de investimentos. Responda a pergunta abaixo utilizando o contexto informado
+
+    Contexto: {context}
     
-    prompt = PromptTemplate(input_variables = ['context', 'question'], template=TEMPLATE)
-    
+    Pergunta: {question}
+    """
+    prompt = PromptTemplate(input_variables=["context", "question"], template=TEMPLATE)
     sequence = RunnableSequence(prompt | llm)
-    context = getRelevantsDocs(question)    
-    
-    response = sequence.invoke({'context':context, "question":question})    
+    context = getRelevantDocs(question)
+    response = sequence.invoke({"context": context,"question": question})
     return response
 
 def lambda_handler(event, context):
-    query = event.get('question')
+    body = json.loads(event.get("body", {}))
+    query = body.get("question")
     response = ask(query, llm).content
-    return{
-        "statusCode":200,
-        "headers":{
-            "Content-Type":"aplication/json"
+
+    return {
+        "statusCode": 200,
+        "headers": {
+            "Content-Type": "application/json"
         },
         "body": json.dumps({
-            "message": "Processed",
-            "details": response
+            "message": "Tarefa Concluída com sucesso",
+            "details": response,
         })
     }
 
