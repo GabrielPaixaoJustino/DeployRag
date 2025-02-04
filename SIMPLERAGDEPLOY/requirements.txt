@@ -1,0 +1,9 @@
+langchain
+langchain-text-splitters
+langchain-openai
+langchain-core
+langchain_community
+langchain
+chromadb
+pypdf
+typing-extensions
